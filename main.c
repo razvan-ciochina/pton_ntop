@@ -11,6 +11,8 @@ union internet_addr{
 #define INADDR_SZ sizeof(struct in_addr)
 #define IN6ADDR_SZ sizeof(struct in6_addr)
 
+static char ip6_mapped_ip4_front[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF};
+
 int main(int argc, char *argv[]) {
     union internet_addr read_addr;
     union internet_addr output_addr;
@@ -28,7 +30,7 @@ int main(int argc, char *argv[]) {
         (strcmp(argv[1], "i6") == 0) ? AF_INET6 : atoi(argv[1]);
 
     domain_out = (strcmp(argv[2], "i4") == 0) ? AF_INET :
-        (strcmp(argv[2], "i6") == 0) ? AF_INET6 : atoi(argv[1]);
+        (strcmp(argv[2], "i6") == 0) ? AF_INET6 : atoi(argv[2]);
 
     s = inet_pton(domain_in, argv[3], &read_addr);
 
@@ -43,17 +45,22 @@ int main(int argc, char *argv[]) {
             perror("inet_pton");
         exit(EXIT_FAILURE);
     }
+    
 
     if (domain_in != domain_out) {
         if (domain_in == AF_INET6 && domain_out == AF_INET) {
-            printf("Cannot convert ipv6 to ipv4.\n");
-            exit(EXIT_FAILURE);
+            if (memcmp(read_addr.ipv6_addr.s6_addr, ip6_mapped_ip4_front, 12) != 0) {
+                printf("Cannot convert ipv6 to ipv4.\n");
+                exit(EXIT_FAILURE);
+            }
+            memcpy(&output_addr.ipv4_addr.s_addr, read_addr.ipv6_addr.s6_addr + 12, 4);
+        } else {
+            printf("Converting IPv4 to IPv6...\n"); 
+            memset(output_addr.ipv6_addr.s6_addr, 0, 10);
+            output_addr.ipv6_addr.s6_addr[10] = 0xFF;
+            output_addr.ipv6_addr.s6_addr[11] = 0xFF;
+            memcpy(output_addr.ipv6_addr.s6_addr + 12, &read_addr.ipv4_addr.s_addr, INADDR_SZ);
         }
-        printf("Converting IPv4 to IPv6...\n"); 
-        memset(output_addr.ipv6_addr.s6_addr, 0, 10);
-        output_addr.ipv6_addr.s6_addr[10] = 0xFF;
-        output_addr.ipv6_addr.s6_addr[11] = 0xFF;
-        memcpy(output_addr.ipv6_addr.s6_addr + 12, &read_addr.ipv4_addr.s_addr, INADDR_SZ);
     } else {
         output_addr = read_addr;
     }
