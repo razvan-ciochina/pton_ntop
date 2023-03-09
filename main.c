@@ -53,6 +53,7 @@ int main(int argc, char *argv[]) {
                 printf("Cannot convert ipv6 to ipv4.\n");
                 exit(EXIT_FAILURE);
             }
+            memset(&output_addr.ipv4_addr, 0, sizeof(struct in_addr));
             memcpy(&output_addr.ipv4_addr.s_addr, read_addr.ipv6_addr.s6_addr + 12, 4);
         } else {
             printf("Converting IPv4 to IPv6...\n"); 
@@ -66,7 +67,7 @@ int main(int argc, char *argv[]) {
     }
 
     c = (char *)&output_addr;
-    printf("%.2hhx", *c);
+    printf("%.2hhx", *c++);
 
     for (; c != ((char *)&output_addr)+16; ++c) {
         printf(":%.2hhx", *c);
